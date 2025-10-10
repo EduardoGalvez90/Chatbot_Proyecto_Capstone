@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Chatbot Gastronómico de Comidas Cajamarquinas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(120deg, #004aad, #007bff);
+            color: white;
+        }
+
+        .top-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: transparent;
+            padding: 15px 40px;
+            color: #fff;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .top-bar .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .top-bar .menu {
+            display: flex;
+            gap: 25px;
+        }
+
+        .top-bar .menu a {
+            color: #f0f0f0;
+            text-decoration: none;
+            font-size: 1em;
+            transition: color 0.3s ease;
+        }
+
+        .top-bar .menu a:hover {
+            color: #ffd700;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            width: 100%;
+            margin-top: 70px;
+        }
+
+        .landing-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .landing-info h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .landing-info p {
+            font-size: 1.2em;
+            max-width: 600px;
+            color: #e8e8e8;
+            line-height: 1.5;
+        }
+
+        .chatbot-area {
+            flex: 0 0 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-right: 40px;
+        }
+
+        .chat-wrapper {
+            width: 440px;
+            height: 600px;
+            background-color: #ffffff;
+            color: #333;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #eaf3ff;
+            padding: 12px 18px;
+            border-bottom: 2px solid #bcd9ff;
+        }
+
+        .title {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1.2em;
+        }
+
+        .bot-avatar {
+            font-size: 1.4em;
+            margin-right: 10px;
+        }
+
+        .btn-mini {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-mini:hover {
+            background-color: #005ecb;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f4f8ff;
+        }
+
+        .msg {
+            margin-bottom: 12px;
+            display: flex;
+        }
+
+        .msg.bot .msg-content {
+            background-color: #d6e9ff;
+            color: #003366;
+            align-self: flex-start;
+            border-radius: 18px 18px 18px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+
+        .msg.user .msg-content {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            border-radius: 18px 18px 0 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+
+        .msg-content {
+            padding: 10px 14px;
+            max-width: 80%;
+            font-size: 0.95em;
+            line-height: 1.4em;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+            background-color: #fff;
+        }
+
+        .input-area input {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 10px 15px;
+            outline: none;
+            font-size: 0.95em;
+        }
+
+        .send-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background-color: #005ecb;
+        }
+
+        .rating-btn {
+            background-color: #ffc107;
+            border: none;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            margin-left: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background 0.3s ease;
+        }
+
+        .rating-btn:hover {
+            background-color: #e0a800;
+        }
+
+        #quickOptions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+            padding: 0 8px 8px;
+        }
+
+        .quick-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .quick-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="logo">Hotel Carrasco</div>
+        <div class="menu">
+            <a href="">Inicio</a>
+            <a href="https://www.booking.com/hotel/pe/hostal-carrasco-cajamarca-cajamarca.es.html?aid=356980&label=gog235jc-10CAsosQFCI2hvc3RhbC1jYXJyYXNjby1jYWphbWFyY2EtY2FqYW1hcmNhSFJYA2ixAYgBAZgBM7gBF8gBDNgBA-gBAfgBAYgCAagCAbgC8_ShxwbAAgHSAiRhZjE1NWFmYy1kYzhlLTQ3ZWEtYjk2MS1kNjk3MDk0ZDg1MTPYAgHgAgE&sid=5cc63f1a38f0621d2122126e2125bbd0&dist=0&keep_landing=1&sb_price_type=total&type=total&#hp_facilities_box" target="_blank">Habitaciones</a>
+            <a href="https://megatoursperu.com/los-platos-tipicos-mas-ricos-de-cajamarca/" target="_blank" >Gastronomía</a>
+            <a href="https://www.google.com/maps/place/HOSTAL+CARRASCO/@-7.1440666,-78.5196318,17z/data=!4m20!1m10!3m9!1s0x91b25b644e0db9bd:0x708584e3a6081305!2sHOSTAL+CARRASCO!5m2!4m1!1i2!8m2!3d-7.1440666!4d-78.5196318!16s%2Fg%2F11m5dvf0dh!3m8!1s0x91b25b644e0db9bd:0x708584e3a6081305!5m2!4m1!1i2!8m2!3d-7.1440666!4d-78.5196318!16s%2Fg%2F11m5dvf0dh?entry=ttu&g_ep=EgoyMDI1MTAwNy4wIKXMDSoASAFQAw%3D%3D" target="_blank">Ubicación</a>
+            <a href="https://www.google.com/travel/search?q=hotel%20carrasco%20cajamarca&g2lb=4965990%2C4969803%2C72302247%2C72317059%2C72414906%2C72471280%2C72472051%2C72485658%2C72560029%2C72573224%2C72616120%2C72647020%2C72686036%2C72803964%2C72882230%2C72958624%2C72959983%2C73010541%2C73059275%2C73064764%2C73107089%2C73124299&hl=es-PE&gl=pe&cs=1&ssta=1&ts=CAEaSQopEicyJTB4OTFiMjViNjQ0ZTBkYjliZDoweDcwODU4NGUzYTYwODEzMDUSHBIUCgcI6Q8QCxgCEgcI6Q8QCxgDGAEyBAgAEAA&qs=CAEyE0Nnb0loYWFnc0xxYzRjSndFQUU4AkIJCQUTCKbjhIVwQgkJBRMIpuOEhXA&ap=ugEIb3ZlcnZpZXc&ictx=111" target="_blank">Contacto</a>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="landing-info">
+            <h1>🍽️ Chatbot Gastronómico de Cajamarca</h1>
+            <p>Descubre los mejores restaurantes, platos típicos y sabores tradicionales de nuestra región.</p>
+        </div>
+
+        <div class="chatbot-area">
+            <div class="chat-wrapper">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <div class="header-left">
+                            <div class="bot-avatar">🤖</div>
+                            <div class="title">Chatbot Gastronómico</div>
+                        </div>
+                        <div class="header-right">
+                            <button id="end-chat" class="btn-mini">Finalizar</button>
+                        </div>
+                    </div>
+
+                    <div class="chat-box" id="chatBox"></div>
+
+                    <div id="quickOptions"></div>
+
+                    <div class="input-area">
+                        <input id="userInput" type="text" placeholder="Escribe tu mensaje..." autocomplete="off" />
+                        <button id="sendBtn" class="send-btn">➤</button>
+                        <button id="ratingBtn" class="rating-btn" title="Calificar">⭐</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const chatBox = document.getElementById("chatBox");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+const ratingBtn = document.getElementById("ratingBtn");
+const quickOptions = document.getElementById("quickOptions");
+
+function addMessage(text, cls="bot") {
+    const div = document.createElement("div");
+    div.className = cls === "user" ? "msg user" : "msg bot";
+    div.innerHTML = `<div class="msg-content">${text}</div>`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function sendMessageToServer(message) {
+    try {
+        const res = await fetch("/send_message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        return data;
+    } catch (err) {
+        console.error(err);
+        return { response: "Error: no se pudo contactar con el servidor." };
+    }
+}
+
+async function handleSend(text = null) {
+    const message = text || userInput.value.trim();
+    if (!message) return;
+
+    addMessage("Tú: " + message, "user");
+    userInput.value = "";
+    quickOptions.innerHTML = "";
+
+    const data = await sendMessageToServer(message);
+    const botReply = data.response;
+    addMessage("Bot: " + botReply, "bot");
+
+    if (data.options && data.options.length > 0) {
+        quickOptions.innerHTML = "";
+        data.options.forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "quick-btn";
+            btn.textContent = opt;
+            btn.onclick = () => handleSend(opt);
+            quickOptions.appendChild(btn);
+        });
+    }
+}
+
+sendBtn.addEventListener("click", () => handleSend());
+userInput.addEventListener("keydown", (e) => { if (e.key === "Enter") handleSend(); });
+</script>
+</body>
+</html>
