@@ -6,14 +6,17 @@ import re
 from dotenv import load_dotenv
 
 load_dotenv()
-
 app = Flask(__name__)
 
+# 🔹 Configurar API de Gemini
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("models/gemini-2.0-flash")
 
 ultimo_plato = None
 
+# -------------------------------
+# SINÓNIMOS DE PLATOS
+# -------------------------------
 SINONIMOS = {
     "chancho": "cerdo",
     "chicharron": "chicharrón",
@@ -28,6 +31,9 @@ SINONIMOS = {
     "chochoca": "sopa de trigo"
 }
 
+# -------------------------------
+# FUNCIONES DE UTILIDAD
+# -------------------------------
 def normalizar_plato(texto):
     texto = texto.lower().strip()
     texto = re.sub(r"[^\w\sáéíóúñ]", "", texto)
@@ -39,29 +45,30 @@ def normalizar_plato(texto):
 def buscar_restaurantes(plato):
     conexion = sqlite3.connect("restaurantes.db")
     cursor = conexion.cursor()
-    cursor.execute(
-        "SELECT nombre, direccion, tipos_comida FROM restaurantes WHERE LOWER(tipos_comida) LIKE ?",
-        ('%' + plato.lower() + '%',)
-    )
+    cursor.execute("""
+        SELECT nombre, direccion, tipos_comida 
+        FROM restaurantes 
+        WHERE LOWER(tipos_comida) LIKE ? OR LOWER(nombre) LIKE ?
+    """, ('%' + plato.lower() + '%', '%' + plato.lower() + '%'))
     resultados = cursor.fetchall()
     conexion.close()
     return resultados
 
+# -------------------------------
+# DETECCIÓN DE INTENCIÓN
+# -------------------------------
 def es_saludo(texto):
     return any(p in texto for p in ["hola", "buenas", "hey", "qué tal", "buenos días", "buenas tardes"])
 
 def es_agradecimiento(texto):
     return any(p in texto for p in ["gracias", "muchas gracias", "te agradezco"])
 
-def es_confirmacion(texto):
-    return texto.strip() in ["sí", "si", "claro", "ok", "de acuerdo"]
-
-def es_negacion(texto):
-    return texto.strip() in ["no", "nop", "no gracias"]
-
 def es_recomendacion_general(texto):
-    return any(p in texto for p in ["recomiend", "suger", "aconsej", "dame un lugar", "un sitio", "lugares para comer", "donde puedo comer"])
+    return any(p in texto for p in ["recomiend", "suger", "aconsej", "lugares para comer", "quiero comer"])
 
+# -------------------------------
+# RUTAS
+# -------------------------------
 @app.route("/")
 def home():
     return render_template("chat.html")
@@ -70,90 +77,56 @@ def home():
 def send_message():
     global ultimo_plato
 
-    user_message = request.json["message"].lower().strip()
+    data = request.get_json()
+    if not data or "message" not in data:
+        return jsonify({"response": "No se recibió mensaje válido."}), 400
+
+    user_message = data["message"].lower().strip()
     respuesta = ""
 
+    # 👋 SALUDO
     if es_saludo(user_message):
-        return jsonify({
-            "response": "👋 ¡Hola! Soy tu asistente gastronómico de Cajamarca. ¿Qué plato típico te gustaría probar hoy?"
-        })
+        return jsonify({"response": "👋 ¡Hola! Soy tu asistente gastronómico de Cajamarca. ¿Qué plato típico te gustaría probar hoy?"})
 
+    # 🙏 AGRADECIMIENTO
     if es_agradecimiento(user_message):
-        return jsonify({
-            "response": "😊 ¡De nada! Me alegra poder ayudarte. ¿Te gustaría que te recomiende otro plato o restaurante de Cajamarca?"
-        })
+        return jsonify({"response": "😊 ¡De nada! Me alegra poder ayudarte. ¿Quieres que te recomiende otro plato o restaurante?"})
 
-    if es_confirmacion(user_message):
-        if ultimo_plato:
-            restaurantes = buscar_restaurantes(ultimo_plato)
-            if restaurantes:
-                respuesta = f"🍽️ Aquí tienes opciones en Cajamarca para disfrutar de **{ultimo_plato}**:\n"
-                for nombre, direccion, tipo in restaurantes:
-                    respuesta += f"🏠 {nombre}\n📍 {direccion}\n🍽️ Especialidades: {tipo}\n\n"
-                respuesta += "¿Deseas que te recomiende otro plato típico o lugar similar?"
-                return jsonify({"response": respuesta})
-        return jsonify({
-            "response": "😊 ¡Perfecto! Dime qué plato te gustaría que te recomiende."
-        })
-
-    if es_negacion(user_message):
-        ultimo_plato = None
-        return jsonify({
-            "response": "Está bien 😊. En Cajamarca también puedes probar platos como el **cuy frito**, el **caldo verde** o el **chicharrón**. "
-                        "¿Te gustaría información sobre alguno de ellos?"
-        })
-
+    # 🍽️ RECOMENDACIONES GENERALES
     if es_recomendacion_general(user_message):
-        respuesta = (
-            "🍽️ Aquí tienes algunos lugares populares para disfrutar en Cajamarca:\n"
-            "🏠 Restaurante El Cumbe – Jr. Del Comercio 456 (Cuy frito, Caldo verde)\n"
-            "🏠 Sabores del Inca – Jr. Puga 987 (Cuy frito, Sopa de morón)\n"
-            "🏠 La Collpa – Carretera Baños del Inca Km 5 (Trucha frita, Chicharrón de cerdo)\n"
-            "🏠 El Porongo – Jr. Cruz de Piedra 416 (Ceviche, Trucha Frita)\n"
-            "🏠 Rokys – Av. Hoyos Rubio 950 (Pollo a la brasa)\n\n"
-            "¿Quieres que te recomiende según un plato específico?"
-        )
-        return jsonify({"response": respuesta})
-
-    if any(p in user_message for p in ["dónde", "donde", "quiero", "comer", "probar", "restaurante", "lugar"]):
-        plato_encontrado = re.sub(r"(donde|dónde|quiero|comer|probar|restaurante|lugar|puedo|un|una|el|la|\?)", "", user_message).strip()
-        plato_normalizado = normalizar_plato(plato_encontrado)
-
-        if not plato_normalizado or plato_normalizado == "":
-            respuesta = (
-                "🍽️ Aquí tienes algunos lugares populares para disfrutar en Cajamarca:\n"
-                "🏠 Restaurante El Cumbe – Jr. Del Comercio 456 (Cuy frito, Caldo verde)\n"
-                "🏠 Sabores del Inca – Jr. Puga 987 (Cuy frito, Sopa de morón)\n"
-                "🏠 La Collpa – Carretera Baños del Inca Km 5 (Trucha frita, Chicharrón de cerdo)\n"
+        return jsonify({
+            "response": (
+                "🍽️ Aquí tienes algunos lugares populares en Cajamarca:\n"
+                "🏠 El Cumbe – Jr. Del Comercio 456 (Cuy frito, Caldo verde)\n"
+                "🏠 Sabores del Inca – Jr. Puga 987 (Sopa de morón, Cuy frito)\n"
+                "🏠 La Collpa – Baños del Inca Km 5 (Trucha frita, Chicharrón de cerdo)\n"
                 "🏠 El Porongo – Jr. Cruz de Piedra 416 (Ceviche, Trucha Frita)\n"
-                "🏠 Rokys – Av. Hoyos Rubio 950 (Pollo a la brasa)\n\n"
-                "¿Quieres que te recomiende un plato típico de alguno?"
+                "🏠 Rokys – Av. Hoyos Rubio 950 (Pollo a la brasa)"
             )
-            return jsonify({"response": respuesta})
+        })
 
-        resultados = buscar_restaurantes(plato_normalizado)
+    # 🔍 BÚSQUEDA DE PLATOS
+    if any(p in user_message for p in ["dónde", "donde", "quiero", "comer", "probar"]):
+        plato = normalizar_plato(user_message)
+        resultados = buscar_restaurantes(plato)
         if resultados:
-            ultimo_plato = plato_normalizado
-            respuesta = f"🍽️ Aquí tienes opciones en Cajamarca para disfrutar de **{plato_normalizado}**:\n"
+            ultimo_plato = plato
+            respuesta = f"🍽️ Aquí tienes opciones para disfrutar de {plato}:\n"
             for nombre, direccion, tipo in resultados:
-                respuesta += f"🏠 {nombre}\n📍 {direccion}\n🍽️ Especialidades: {tipo}\n\n"
-            respuesta += "¿Deseas que te recomiende otro plato típico o lugar similar?"
+                respuesta += f"🏠 {nombre}\n📍 {direccion}\n🍽️ {tipo}\n\n"
+            return jsonify({"response": respuesta})
         else:
-            # Sugerencia si no se encuentra
-            ultimo_plato = None
-            respuesta = f"😕 No tengo registros exactos de **{plato_encontrado}**, pero puedo recomendar **cuy frito**, **caldo verde** o **chicharrón**. ¿Quieres que te diga dónde probar alguno?"
-        return jsonify({"response": respuesta})
+            return jsonify({"response": f"😕 No encontré lugares con {plato}, pero puedo recomendarte cuy frito o caldo verde."})
 
+    # 🧠 RESPUESTA DE GEMINI
     try:
-        respuesta_ia = model.generate_content(
-            f"Eres un asistente gastronómico en Cajamarca. Responde solo sobre comida local. El usuario dice: '{user_message}'"
-        )
+        respuesta_ia = model.generate_content(f"Eres un asistente gastronómico en Cajamarca. El usuario dice: '{user_message}'.")
         respuesta = respuesta_ia.text.strip()
-    except Exception:
+    except Exception as e:
+        print("Error Gemini:", e)
         respuesta = "No entendí bien tu mensaje. Puedo ayudarte con información sobre los mejores platos y restaurantes en Cajamarca."
 
     return jsonify({"response": respuesta})
-
 
 if __name__ == "__main__":
     app.run(debug=True)
