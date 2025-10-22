@@ -8,15 +8,15 @@
     <style>
         /* --- Fondo y estructura general --- */
         body {
-             margin: 0;
-    padding: 0;
-    font-family: 'Poppins', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(120deg, #004aad, #007bff);
-    color: white;
-    overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(120deg, #004aad, #007bff);
+            color: white;
+            overflow-x: hidden;
         }
 
         /* --- Barra superior --- */
@@ -67,30 +67,30 @@
         }
 
         /* --- Contenedor principal --- */
-       .main-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    min-height: calc(100vh - 80px);
-    padding-top: 100px;
-    box-sizing: border-box;
-}
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            min-height: calc(100vh - 80px);
+            padding-top: 100px;
+            box-sizing: border-box;
+        }
 
         /* --- Fila con texto y chat --- */
-       .content-row {
-    display: flex;
-    justify-content: space-evenly;
-    align-items: flex-start;
-    width: 100%;
-    max-width: 1300px;
-    padding: 20px;
-    gap: 30px;
-    box-sizing: border-box;
-    margin-bottom: 40px;
-}
+        .content-row {
+            display: flex;
+            justify-content: space-evenly;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1300px;
+            padding: 20px;
+            gap: 30px;
+            box-sizing: border-box;
+            margin-bottom: 40px;
+        }
 
         /* --- Información de la izquierda --- */
         .landing-info {
@@ -115,6 +115,37 @@
             max-width: 600px;
             color: #e8e8e8;
             line-height: 1.5;
+        }
+
+        /* --- Botones rápidos --- */
+        .quick-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-buttons button {
+            background-color: #007bff;
+            color: white;
+            padding: 14px 25px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .quick-buttons button:hover {
+            background-color: #005ecb;
+            transform: translateY(-3px);
+        }
+
+        .quick-buttons button:active {
+            background-color: #003f8e;
+            transform: translateY(2px);
         }
 
         /* --- Chat a la derecha --- */
@@ -248,11 +279,47 @@
 
         /* --- Mapa debajo --- */
         #map {
-            width: 90%;
-            height: 300px;
+            width: 100% !important;
+            height: 300px !important;
+            min-height: 300px;
             border-radius: 12px;
             margin: 25px 0 40px 0;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+            visibility: visible;
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- Botones de traducción --- */
+        .translate-buttons {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding-top: 15px;
+            padding-left: 15px;
+        }
+
+        .translate-buttons button {
+            background-color: #ff9f00;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 0.95em;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .translate-buttons button:hover {
+            background-color: #f57c00;
+            transform: translateY(-3px);
+        }
+
+        .translate-buttons button:active {
+            background-color: #e65100;
+            transform: translateY(2px);
         }
 
         /* --- Responsive --- */
@@ -297,6 +364,14 @@
             <div class="landing-info">
                 <h1>🍽️ Chatbot Gastronómico de Cajamarca</h1>
                 <p>Descubre los mejores restaurantes, platos típicos y sabores tradicionales de nuestra región.</p>
+
+                <!-- Botones rápidos -->
+                <div class="quick-buttons">
+                    <button id="cuyFritoBtn">Cuy Frito</button>
+                    <button id="caldoGallinaBtn">Caldo de Gallina</button>
+                    <button id="truchaFritaBtn">Trucha Frita</button>
+                    <button id="chicharronBtn">Chicharrón</button>
+                </div>
             </div>
 
             <div class="chatbot-area">
@@ -355,35 +430,44 @@
                 body: JSON.stringify({ message })
             });
             if (!res.ok) throw new Error("Servidor no respondió correctamente");
-            return await res.json();
+            const data = await res.json();
+            addMessage("Bot: " + data.response, "bot");
+            addTranslateButtons();  // Agregar los botones de traducción
         } catch (err) {
             console.error("❌ Error en fetch:", err);
-            return { response: "⚠️ Error: no se pudo contactar con el servidor." };
         }
     }
 
-    let voicesReady = false;
-    function ensureVoicesLoaded() {
-        return new Promise(resolve => {
-            const id = setInterval(() => {
-                if (speechSynthesis.getVoices().length !== 0) {
-                    voicesReady = true;
-                    clearInterval(id);
-                    resolve();
-                }
-            }, 100);
+    // Agregar botones de traducción
+    function addTranslateButtons() {
+        const translateButtons = `
+            <div class="translate-buttons">
+                <button class="translate-btn" id="translateToEnglish">Traducir a Inglés</button>
+                <button class="translate-btn" id="translateToPortuguese">Traducir a Portugués</button>
+                <button class="translate-btn" id="translateToFrench">Traducir a Francés</button>
+            </div>
+        `;
+        chatBox.innerHTML += translateButtons;
+    }
+
+    // Función para traducir el mensaje
+    async function translateMessage(language) {
+        const message = chatBox.lastElementChild.textContent;  // Usamos el último mensaje mostrado
+        const res = await fetch('/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message,
+                language: language, // Idioma a traducir ('en', 'pt', 'fr')
+            }),
         });
+        const data = await res.json();
+        addMessage(data.response, 'bot');  // Mostrar mensaje traducido
     }
 
-    async function speak(text) {
-        await ensureVoicesLoaded();
-        const voices = speechSynthesis.getVoices();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "es-PE";
-        utter.voice = voices.find(v => v.lang.includes("es")) || voices[0];
-        speechSynthesis.speak(utter);
-    }
-
+    // Función para habilitar el reconocimiento de voz
     function startVoiceRecognition() {
         if (!("webkitSpeechRecognition" in window)) {
             alert("Tu navegador no soporta reconocimiento de voz.");
@@ -399,25 +483,30 @@
             addMessage("Tú: " + transcript, "user");
             const data = await sendMessageToServer(transcript);
             addMessage("Bot: " + data.response, "bot");
-            speak(data.response);
         };
         recognition.start();
     }
 
+    // Inicialización del mapa
     function initMap() {
-        const map = L.map("map").setView([-7.1617, -78.5128], 13);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: "&copy; OpenStreetMap contributors"
-        }).addTo(map);
-        L.marker([-7.1617, -78.5128]).addTo(map)
-          .bindPopup("📍 Cajamarca Centro")
-          .openPopup();
+        const mapElement = document.getElementById("map");
+        if (mapElement && mapElement.offsetHeight > 0) {
+            const map = L.map("map").setView([-7.1617, -78.5128], 13);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(map);
+
+            L.marker([-7.1617, -78.5128]).addTo(map)
+                .bindPopup("📍 Cajamarca Centro")
+                .openPopup();
+        } else {
+            console.error("El contenedor del mapa no es visible o no se encuentra.");
+        }
     }
 
-    window.addEventListener("load", async () => {
+    window.addEventListener("load", function() {
         addMessage("👋 ¡Hola! Soy tu asistente gastronómico de Cajamarca. ¿Qué plato típico te gustaría probar hoy?");
-        await speak("Hola, soy tu asistente gastronómico de Cajamarca. ¿Qué plato típico te gustaría probar hoy?");
-        initMap();
+        initMap();  // Asegúrate de que el mapa se inicialice correctamente
     });
 
     sendBtn.addEventListener("click", async () => {
@@ -425,12 +514,49 @@
         if (!message) return;
         addMessage("Tú: " + message, "user");
         userInput.value = "";
-        const data = await sendMessageToServer(message);
-        addMessage("Bot: " + data.response, "bot");
-        speak(data.response);
+        await sendMessageToServer(message);
     });
 
-    micBtn.addEventListener("click", startVoiceRecognition);
+    micBtn.addEventListener("click", () => {
+        startVoiceRecognition();
+    });
+
+    // Agregar los botones rápidos para enviar los mensajes automáticamente
+    document.getElementById("cuyFritoBtn").addEventListener("click", function() {
+        addMessage("Tú: donde puedo comer cuy frito", "user");
+        sendMessageToServer("donde puedo comer cuy frito");
+    });
+
+    document.getElementById("caldoGallinaBtn").addEventListener("click", function() {
+        addMessage("Tú: donde puedo comer caldo de gallina", "user");
+        sendMessageToServer("donde puedo comer caldo de gallina");
+    });
+
+    document.getElementById("truchaFritaBtn").addEventListener("click", function() {
+        addMessage("Tú: donde puedo comer trucha frita", "user");
+        sendMessageToServer("donde puedo comer trucha frita");
+    });
+
+    document.getElementById("chicharronBtn").addEventListener("click", function() {
+        addMessage("Tú: donde puedo comer chicharrón", "user");
+        sendMessageToServer("donde puedo comer chicharrón");
+    });
+
+    userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();       // evita salto de línea o submit
+            sendBtn.click();          // reutiliza tu lógica existente
+        }
+    });
+
+    // (Opcional) compatibilidad con navegadores que usan keyCode
+    userInput.addEventListener("keypress", (e) => {
+        const code = e.keyCode || e.which;
+        if (code === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click();
+        }
+    });
     </script>
 </body>
 </html>
